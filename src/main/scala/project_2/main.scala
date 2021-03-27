@@ -77,11 +77,24 @@ object main{
     }
 
     def +(that: BJKSTSketch): BJKSTSketch = {    /* Merging two sketches */
-
+      z = scala.math.max(z, that.z)
+      bucket = bucket union that.bucket
+      /* Shrink the bucket */
+      while(bucket.size > bucket_size_in) {
+        z = z + 1
+        bucket = bucket.filter(_._2 >= z)
+      }
+      return this
     }
 
     def add_string(s: String, z_of_s: Int): BJKSTSketch = {   /* add a string to the sketch */
-
+      bucket = bucket union Set((s, z_of_s))
+      /* Shrink the bucket */
+      while(bucket.size > bucket_size_in) {
+        z = z + 1
+        bucket = bucket.filter(_._2 >= z)
+      }
+      return this
     }
   }
 
