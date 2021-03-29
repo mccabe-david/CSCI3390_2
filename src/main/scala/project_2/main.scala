@@ -118,8 +118,8 @@ object main{
     def param0 = (accu1: Seq[BJKSTSketch], accu2: Seq[BJKSTSketch]) => Seq.range(0,trials).map(i => (accu1(i).+(accu2(i))))
     def param1 = (accu1: Seq[BJKSTSketch], s: String) => Seq.range(0,trials).map(i =>  accu1(i).add_string(s, h(i).zeroes(h(i).hash(s))))
 
-    val x3 = x.aggregate(Seq.fill(trials)(0))( param1, param0)
-    val answer = x3.map(z => scala.math.pow(2,z)*width).sortWith(_ < _)( trials/2) /* Take the median of the trials */
+    val x3 = x.aggregate(Seq.fill(trials)(new BJKSTSketch("dummy", 0, 100)))( param1, param0)
+    val answer = x3.map(sketch => scala.math.pow(2,sketch.z.toDouble)*width).sortWith(_ < _)( trials/2) /* Take the median of the trials */
 
     return answer
   }
