@@ -80,19 +80,22 @@ object main{
       z = scala.math.max(z, that.z)
       bucket = bucket union that.bucket
       /* Shrink the bucket */
-      while(bucket.size > bucket_size_in) {
+      while(bucket.size >= bucket_size_in) {
         z = z + 1
-        bucket = bucket.filter(_._2 >= z)
+        bucket = bucket.filter(x => {x._2 >= z})
       }
       return this
     }
 
     def add_string(s: String, z_of_s: Int): BJKSTSketch = {   /* add a string to the sketch */
-      bucket = bucket union Set((s, z_of_s))
-      /* Shrink the bucket */
-      while(bucket.size > bucket_size_in) {
-        z = z + 1
-        bucket = bucket.filter(_._2 >= z)
+      
+      if (z_of_s >= z) {
+        bucket = bucket union Set((s, z_of_s))
+        /* Shrink the bucket */
+        while(bucket.size >= bucket_size_in) {
+          z = z + 1
+          bucket = bucket.filter(x => {x._2 >= z})
+        }
       }
       return this
     }
@@ -115,20 +118,36 @@ object main{
   def BJKST(x: RDD[String], width: Int, trials: Int) : Double = {
     val h = Seq.fill(trials)(new hash_function(2000000000))
     
-    def param0 = (accu1: Seq[BJKSTSketch], accu2: Seq[BJKSTSketch]) => Seq.range(0,trials).map(i => (accu1(i).+(accu2(i))))
-    def param1 = (accu1: Seq[BJKSTSketch], s: String) => Seq.range(0,trials).map(i =>  accu1(i).add_string(s, h(i).zeroes(h(i).hash(s))))
+    def param0 = (accu1: Seq[BJKSTSketch], accu2: Seq[BJKSTSketch]) => Seq.range(0,trials).map(i => (accu1(i) + accu2(i)))
+    def param1 = (accu1: Seq[BJKSTSketch], s: String) => Seq.range(0,trials).map(i => accu1(i).add_string(s, h(i).zeroes(h(i).hash(s))))
 
-    val x3 = x.aggregate(Seq.fill(trials)(new BJKSTSketch("dummy", 0, 100)))( param1, param0)
-    val answer = x3.map(sketch => scala.math.pow(2,sketch.z.toDouble)*width).sortWith(_ < _)( trials/2) /* Take the median of the trials */
+    val x3 = x.aggregate(Seq.fill(trials)(new BJKSTSketch("dummy", 0, width)))( param1, param0)
+    
+    val temp = x3.map(sketch => scala.math.pow(2,sketch.z.toDouble)*sketch.bucket.size)
+    println(temp)
+    val answer = temp.sortWith(_ < _)( trials/2) /* Take the median of the trials */
 
     return answer
   }
 
-
+  
   def Tug_of_War(x: RDD[String], width: Int, depth:Int) : Long = {
+    val means = new Array[Double](depth)
+    var a = 0
+      for (a <- 1 until depth) {
+      val h = Seq.fill(width)(new four_universal_Radamacher_hash_function)
 
-  }
+      def param0 = (accu1: Seq[Int], accu2: Seq[Int]) => Seq.range(0,width).map(i => accu1(i) + accu2(i))
+      def param1 = (accu1: Seq[Int], s: String) => Seq.range(0,width).map( i =>  accu1(i) + h(i).hash(s).toInt)
 
+      val x3 = x.aggregate(Seq.fill(width)(0))( param1, param0)
+      val temp = x3.map(z => scala.math.pow(z,2))  /* get the data */
+      means(a) = temp.sum / temp.size
+      println(means(a))
+      }
+    return means.sortWith(_<_)(depth/2).toLong
+
+  } 
 
   def exact_F0(x: RDD[String]) : Long = {
     val ans = x.distinct.count
@@ -137,7 +156,8 @@ object main{
 
 
   def exact_F2(x: RDD[String]) : Long = {
-
+    val pizza = x.map(s => (s, 1)).reduceByKey(_+_).map(y => y._2 * y._2).sum
+    return pizza.toLong
   }
 
 
@@ -168,7 +188,7 @@ object main{
       val durationSeconds = (endTimeMillis - startTimeMillis) / 1000
 
       println("==================================")
-      println("BJKST Algorithm. Bucket Size:"+ args(2) + ". Trials:" + args(3) +". Time elapsed:" + durationSeconds + "s. Estimate: "+ans)
+      println("BJKST Algorithm. Bucket Size:"+ args(2) + ". Trials:" + args(3) +". Time elapsed:" + durationSeconds + "s. Estimate: "+ans.toLong)
       println("==================================")
     }
     else if(args(1)=="tidemark") {
@@ -195,7 +215,7 @@ object main{
       val durationSeconds = (endTimeMillis - startTimeMillis) / 1000
       println("==================================")
       println("Tug-of-War F2 Approximation. Width :" +  args(2) + ". Depth: "+ args(3) + ". Time elapsed:" + durationSeconds + "s. Estimate: "+ans)
-      println("==================================")
+      println("==================================") 
     }
     else if(args(1)=="exactF2") {
       if(args.length != 2) {
