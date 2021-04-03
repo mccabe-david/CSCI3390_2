@@ -123,9 +123,7 @@ object main{
 
     val x3 = x.aggregate(Seq.fill(trials)(new BJKSTSketch("dummy", 0, width)))( param1, param0)
     
-    val temp = x3.map(sketch => scala.math.pow(2,sketch.z.toDouble)*sketch.bucket.size)
-    println(temp)
-    val answer = temp.sortWith(_ < _)( trials/2) /* Take the median of the trials */
+    val answer = x3.map(sketch => scala.math.pow(2,sketch.z.toDouble)*sketch.bucket.size).sortWith(_ < _)( trials/2) /* Take the median of the trials */
 
     return answer
   }
@@ -143,7 +141,6 @@ object main{
       val x3 = x.aggregate(Seq.fill(width)(0))( param1, param0)
       val temp = x3.map(z => scala.math.pow(z,2))  /* get the data */
       means(a) = temp.sum / temp.size
-      println(means(a))
       }
     return means.sortWith(_<_)(depth/2).toLong
 
